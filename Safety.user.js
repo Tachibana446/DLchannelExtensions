@@ -16,6 +16,7 @@ var setDraft = (flag) => {
         is_draft = flag;
         if (is_draft) {
             hideSubmitButton();
+            hideAllDeleteButtons();
             setItemChangeObserver();
         }
     }
@@ -76,7 +77,7 @@ var hideSubmitButton = () => {
     }
 }
 
-// アイテムの変更に応じてキャンセルボタンを置換するObserver
+// アイテムの変更に応じてキャンセルボタン・削除ボタンを置換するObserver
 const itemChangedObserver = new MutationObserver((records) => {
     for (const rec of records) {
         if (rec.type !== 'childList') {
@@ -85,7 +86,7 @@ const itemChangedObserver = new MutationObserver((records) => {
         // アイテム編集時はelement-editableからform-groupになるのでそれに合わせる
         if (rec.removedNodes.length > 0) {
             const removed = Array.from(rec.removedNodes);
-            if (removed.some(node =>node.classList && node.classList.contains('element-editable'))) {
+            if (removed.some(node => node.classList && node.classList.contains('element-editable'))) {
                 const buttons = rec.target.querySelectorAll('button.btn');
                 for (const b of buttons) {
                     if (b.innerText.trim() == 'キャンセル') {
@@ -95,10 +96,16 @@ const itemChangedObserver = new MutationObserver((records) => {
                 }
             }
         }
-        // 新規アイテム追加時は.element-item要素が増えるのでそれに合わせる
+
         if (rec.addedNodes.length > 0) {
             const added = Array.from(rec.addedNodes);
-            if (added.some(node => node.classList && node.classList.contains('element-item'))) {
+            // アイテム確定時は.element-editable-innerが追加されるのでそれに合わせて削除ボタンを置換
+            if (added.some(node => node.classList && node.classList.contains('element-editable-inner'))) {
+                let deleteButton = rec.target.querySelector('button.btn-action-delete:not(.replaced-button)');
+                hideDeleteButton(deleteButton);
+            }
+            // 新規アイテム追加時は.element-item要素が増えるのでそれに合わせる
+            else if (added.some(node => node.classList && node.classList.contains('element-item'))) {
                 const buttons = rec.target.querySelectorAll('button.btn');
                 for (const b of buttons) {
                     if (b.innerText.trim() == 'キャンセル') {
@@ -139,3 +146,23 @@ var hideCancelButton = (cancelButton) => {
     cancelButton.parentElement.insertBefore(newButton, cancelButton);
 }
 
+// 削除ボタンを置き換える
+var hideDeleteButton = (deleteButton) => {
+    if (!deleteButton) return;
+    let newButton = deleteButton.cloneNode(true);
+    newButton.addEventListener('click', (_e) => {
+        if (confirm('本当に削除しますか？')) {
+            deleteButton.click();
+        }
+    });
+    deleteButton.classList.add('replaced-button');
+    newButton.classList.add('replaced-button');
+    deleteButton.hidden = true;
+    deleteButton.parentElement.insertBefore(newButton, deleteButton);
+}
+
+// 現状存在するすべての削除ボタンを置換する
+var hideAllDeleteButtons = () => {
+    let buttons = document.querySelectorAll('button.btn-action-delete:not(.replaced-button)');
+    buttons.forEach(b => hideDeleteButton(b));
+}
