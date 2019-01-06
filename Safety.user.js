@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        DLChannel_Safety
-// @version     0.1
+// @version     0.2
 // @description DLチャンネルでのまとめ編集時に反映ボタンやアイテムのキャンセルボタンを誤操作しないようアラートを出すスクリプト。
 // @match       https://ch.dlsite.com/matome/create/*
 // @match       https://ch.dlsite.com/matome/create
@@ -79,6 +79,7 @@ var hideSubmitButton = () => {
 
 // アイテムの変更に応じてキャンセルボタン・削除ボタンを置換するObserver
 const itemChangedObserver = new MutationObserver((records) => {
+    itemChangedObserver.disconnect();
     for (const rec of records) {
         if (rec.type !== 'childList') {
             continue;
@@ -91,7 +92,7 @@ const itemChangedObserver = new MutationObserver((records) => {
                 for (const b of buttons) {
                     if (b.innerText.trim() == 'キャンセル') {
                         hideCancelButton(b);
-                        return;
+                        break;
                     }
                 }
             }
@@ -100,7 +101,7 @@ const itemChangedObserver = new MutationObserver((records) => {
         if (rec.addedNodes.length > 0) {
             const added = Array.from(rec.addedNodes);
             // アイテム確定時は.element-editable-innerが追加されるのでそれに合わせて削除ボタンを置換
-            if (added.some(node => node.classList && node.classList.contains('element-editable-inner'))) {
+            if (added.some(node => node.classList && (node.classList.contains('element-editable-inner') || node.classList.contains('element-editable')))) {
                 let deleteButton = rec.target.querySelector('button.btn-action-delete:not(.replaced-button)');
                 hideDeleteButton(deleteButton);
             }
@@ -110,12 +111,13 @@ const itemChangedObserver = new MutationObserver((records) => {
                 for (const b of buttons) {
                     if (b.innerText.trim() == 'キャンセル') {
                         hideCancelButton(b);
-                        return;
+                        break;
                     }
                 }
             }
         }
     }
+    setItemChangeObserver();
 })
 
 // #items-containerを探してobserveする
